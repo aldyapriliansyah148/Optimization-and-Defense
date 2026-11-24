@@ -1,0 +1,93 @@
+A. Konfigurasi Switch Layer 3 / Core Switch (VLAN, Trunking, & Inter-VLAN Route
+Switch> enable
+Switch# configure terminal
+
+Membuat VLAN
+Switch(config)# vlan 10
+Switch(config-vlan)# name IT-DEPT
+Switch(config-vlan)# vlan 20
+Switch(config-vlan)# name HR-DEPT
+Switch(config-vlan)# vlan 30
+Switch(config-vlan)# name FINANCE-DEPT
+Switch(config-vlan)# vlan 40
+Switch(config-vlan)# name GUEST-ZONE
+Switch(config-vlan)# vlan 99
+Switch(config-vlan)# name MANAGEMENT
+Switch(config-vlan)# exit
+
+Konfigurasi Port Trunk ke arah Router (misal port FastEthernet 0/1)
+Switch(config)# interface fastEthernet 0/1
+Switch(config-if)# switchport trunk encapsulation dot1q
+Switch(config-if)# switchport mode trunk
+Switch(config-if)# switchport trunk native vlan 99
+Switch(config-if)# no shutdown
+Switch(config-if)# exit
+
+Mengaktifkan fitur Routing di Layer 3 Switch
+Switch(config)# ip routing
+
+Konfigurasi IP Gateway (SVI) untuk setiap VLAN
+Switch(config)# interface vlan 10
+Switch(config-if)# ip address 192.168.10.1 255.255.255.0
+Switch(config-if)# no shutdown
+Switch(config-if)# exit
+
+Switch(config)# interface vlan 20
+Switch(config-if)# ip address 192.168.20.1 255.255.255.0
+Switch(config-if)# no shutdown
+Switch(config-if)# exit
+
+Switch(config)# interface vlan 30
+Switch(config-if)# ip address 192.168.30.1 255.255.255.0
+Switch(config-if)# no shutdown
+Switch(config-if)# exit
+
+Switch(config)# interface vlan 40
+Switch(config-if)# ip address 192.168.40.1 255.255.255.0
+Switch(config-if)# no shutdown
+Switch(config-if)# exit
+Verifikasi: Jalankan perintah show ip route untuk memastikan tabel routing antar-VLAN sudah terbentuk secara otomatis (connected).
+
+Network Hardening: Port Security (Sticky MAC & Violate Shutdown)
+
+Switch(config)# interface range fastEthernet 0/2 - 10
+Switch(config-if-range)# switchport mode access
+Switch(config-if-range)# switchport port-security
+Switch(config-if-range)# switchport port-security maximum 2
+Switch(config-if-range)# switchport port-security mac-address sticky
+Switch(config-if-range)# switchport port-security violation shutdown
+Switch(config-if-range)# no shutdown
+Switch(config-if-range)# exit
+Verifikasi: Jalankan show port-security interface fastEthernet 0/2 untuk memastikan status port aktif dan parameter pelanggaran (violation mode) sudah aktif.
+
+Mitigasi Serangan: DHCP Snooping & Dynamic ARP Inspection (DAI)
+
+Aktifkan DHCP Snooping secara global
+Switch(config)# ip dhcp snooping
+Switch(config)# ip dhcp snooping vlan 10,20,30,40
+
+Tentukan port yang terhubung ke DHCP Server sah sebagai Trusted (misal port 0/24)
+Switch(config)# interface fastEthernet 0/24
+Switch(config-if)# ip dhcp snooping trust
+Switch(config-if)# exit
+
+Terapkan limit rate pada port akses agar terhindar dari DHCP starvation
+Switch(config)# interface range fastEthernet 0/2 - 10
+Switch(config-if-range)# ip dhcp snooping limit rate 15
+Switch(config-if-range)# exit
+
+Aktifkan Dynamic ARP Inspection (DAI) berbasis VLAN yang dipasangkan dengan DHCP Snooping
+Switch(config)# ip arp inspection vlan 10,20,30,40
+Verifikasi: Gunakan perintah show ip dhcp snooping binding untuk melihat daftar MAC dan IP yang valid yang dipelajari oleh switch.
+
+Traffic Filtering: Extended Access Control List (ACL)
+
+Membuat Extended ACL dengan nomor 101
+Switch(config)# access-list 101 deny ip 192.168.20.0 0.0.0.255 192.168.30.0 0.0.0.255
+Switch(config)# access-list 101 permit ip any any
+
+Terapkan ACL pada interface SVI VLAN HR (arah masuk / inbound trafik dari HR)
+Switch(config)# interface vlan 20
+Switch(config-ip-access-control)# ip access-group 101 in
+Switch(config-if)# exit
+Verifikasi: Jalankan perintah show access-lists 101 untuk memastikan counter bertambah saat ada percobaan komunikasi lintas departemen yang diblokir.

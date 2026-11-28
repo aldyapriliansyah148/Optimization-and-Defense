@@ -1,0 +1,83 @@
+🖧 2. Access Switch (2960-24TT — Port Access, Security, DHCP Snooping & DAI)
+Plaintext
+enable
+configure terminal
+
+! 🏷️ Identitas & Banner
+hostname SW-ACCESS-2960
+banner motd # 🛑 Akses Terbatas: SW-ACCESS-2960 (Access Layer Security) 🛑 #
+
+! 🌐 Sinkronisasi Database VLAN
+vlan 10
+name IT-DEPT
+vlan 20
+name HR-DEPT
+vlan 30
+name FINANCE-DEPT
+vlan 40
+name GUEST-ZONE
+vlan 99
+name MANAGEMENT
+exit
+
+! 🔌 Trunk Uplink ke Multilayer Switch
+interface GigabitEthernet 0/1
+description Uplink ke SW-CORE-3560
+switchport mode trunk
+switchport trunk native vlan 99
+ip dhcp snooping trust
+no shutdown
+exit
+
+! 💻 Pemetaan Port Access Sesuai Topologi
+interface FastEthernet 0/2
+description PC-HR (VLAN 20)
+switchport mode access
+switchport access vlan 20
+exit
+
+interface FastEthernet 0/3
+description PC-FINANCE (VLAN 30)
+switchport mode access
+switchport access vlan 30
+exit
+
+interface FastEthernet 0/4
+description Laptop-IT (VLAN 10)
+switchport mode access
+switchport access vlan 10
+exit
+
+interface FastEthernet 0/5
+description PC-GUEST (VLAN 40)
+switchport mode access
+switchport access vlan 40
+exit
+
+! 🔒 Port Security (Sticky MAC + Shutdown) pada Port End-Device
+interface range FastEthernet 0/2 - 5
+switchport port-security
+switchport port-security maximum 2
+switchport port-security mac-address sticky
+switchport port-security violation shutdown
+no shutdown
+exit
+
+! 🛡️ DHCP Snooping & Dynamic ARP Inspection (DAI)
+ip dhcp snooping
+ip dhcp snooping vlan 10,20,30,40
+ip arp inspection vlan 10,20,30,40
+
+interface range FastEthernet 0/2 - 5
+ip dhcp snooping limit rate 15
+exit
+
+end
+write memory
+🔍 Cek cepat di SW-ACCESS-2960:
+
+show interfaces trunk — pastikan trunk Gi0/1 aktif dan native VLAN 99 terpasang.
+
+show port-security — pastikan status port aktif (Secure-up) dan sticky MAC tersimpan.
+
+show ip dhcp snooping binding — cek daftar IP dan MAC yang valid.

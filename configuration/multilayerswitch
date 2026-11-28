@@ -1,59 +1,85 @@
+🧠 1. Multilayer Switch (3560-24PS — Core & Inter-VLAN Routing)
+Plaintext
+enable
+configure terminal
 
-1. Multilayer Switch (3560-24PS — Core / Inter-VLAN Routing & ACL)
-Bagian VLAN, Trunk ke Router/Access, IP Routing & SVI, serta Extended ACL paling tepat diletakkan di Switch Layer 3 (3560) karena perangkat inilah yang melakukan routing antar-VLAN.
+! 🏷️ Identitas & Banner
+hostname SW-CORE-3560
+banner motd # 🛑 Akses Terbatas: SW-CORE-3560 (Inter-VLAN Routing & ACL) 🛑 #
 
-Switch3560> enable
-Switch3560# configure terminal
+! 🌐 Pembuatan VLAN Departemen & Management
+vlan 10
+name IT-DEPT
+vlan 20
+name HR-DEPT
+vlan 30
+name FINANCE-DEPT
+vlan 40
+name GUEST-ZONE
+vlan 99
+name MANAGEMENT
+exit
 
-! Membuat VLAN
-Switch3560(config)# vlan 10
-Switch3560(config-vlan)# name IT-DEPT
-Switch3560(config-vlan)# vlan 20
-Switch3560(config-vlan)# name HR-DEPT
-Switch3560(config-vlan)# vlan 30
-Switch3560(config-vlan)# name FINANCE-DEPT
-Switch3560(config-vlan)# vlan 40
-Switch3560(config-vlan)# name GUEST-ZONE
-Switch3560(config-vlan)# vlan 99
-Switch3560(config-vlan)# name MANAGEMENT
-Switch3560(config-vlan)# exit
+! 🔌 Konfigurasi Trunk Uplink ke Router1 & Downlink ke Access Switch
+interface GigabitEthernet 0/1
+description Link ke Router1
+switchport trunk encapsulation dot1q
+switchport mode trunk
+switchport trunk native vlan 99
+no shutdown
+exit
 
-! Trunk ke Router1 (Gig0/1) dan ke Switch 2960 (Gig0/2)
-Switch3560(config)# interface range gigabitEthernet 0/1 - 2
-Switch3560(config-if-range)# switchport trunk encapsulation dot1q
-Switch3560(config-if-range)# switchport mode trunk
-Switch3560(config-if-range)# switchport trunk native vlan 99
-Switch3560(config-if-range)# no shutdown
-Switch3560(config-if-range)# exit
+interface GigabitEthernet 0/2
+description Link ke SW-ACCESS-2960
+switchport trunk encapsulation dot1q
+switchport mode trunk
+switchport trunk native vlan 99
+no shutdown
+exit
 
-! Mengaktifkan routing antar-VLAN & SVI Gateway
-Switch3560(config)# ip routing
+! 🔀 Aktivasi Routing & Gateway SVI Tiap VLAN
+ip routing
 
-Switch3560(config)# interface vlan 10
-Switch3560(config-if)# ip address 192.168.10.1 255.255.255.0
-Switch3560(config-if)# no shutdown
-Switch3560(config-if)# exit
+interface Vlan 10
+description Gateway IT-DEPT
+ip address 192.168.10.1 255.255.255.0
+no shutdown
+exit
 
-Switch3560(config)# interface vlan 20
-Switch3560(config-if)# ip address 192.168.20.1 255.255.255.0
-Switch3560(config-if)# no shutdown
-Switch3560(config-if)# exit
+interface Vlan 20
+description Gateway HR-DEPT
+ip address 192.168.20.1 255.255.255.0
+no shutdown
+exit
 
-Switch3560(config)# interface vlan 30
-Switch3560(config-if)# ip address 192.168.30.1 255.255.255.0
-Switch3560(config-if)# no shutdown
-Switch3560(config-if)# exit
+interface Vlan 30
+description Gateway FINANCE-DEPT
+ip address 192.168.30.1 255.255.255.0
+no shutdown
+exit
 
-Switch3560(config)# interface vlan 40
-Switch3560(config-if)# ip address 192.168.40.1 255.255.255.0
-Switch3560(config-if)# no shutdown
-Switch3560(config-if)# exit
+interface Vlan 40
+description Gateway GUEST-ZONE
+ip address 192.168.40.1 255.255.255.0
+no shutdown
+exit
 
-! Extended ACL: blokir trafik dari VLAN HR (192.168.20.0/24) ke VLAN Finance (192.168.30.0/24)
-Switch3560(config)# access-list 101 deny ip 192.168.20.0 0.0.0.255 192.168.30.0 0.0.0.255
-Switch3560(config)# access-list 101 permit ip any any
+! 🛡️ Kebijakan Keamanan: Blokir HR (192.168.20.0/24) -> Finance (192.168.30.0/24)
+ip access-list extended ACL-HR-TO-FINANCE
+deny ip 192.168.20.0 0.0.0.255 192.168.30.0 0.0.0.255
+permit ip any any
+exit
 
-Switch3560(config)# interface vlan 20
-Switch3560(config-if)# ip access-group 101 in
-Switch3560(config-if)# exit
-Verifikasi: Jalankan show ip route untuk memastikan subnet VLAN 10, 20, 30, dan 40 berstatus C (connected), lalu show access-lists 101 dan show ip interface vlan 20 untuk memastikan ACL aktif di arah inbound.
+interface Vlan 20
+ip access-group ACL-HR-TO-FINANCE in
+exit
+
+end
+write memory
+🔍 Cek cepat di SW-CORE-3560:
+
+show vlan brief — pastikan seluruh VLAN (10, 20, 30, 40, 99) terdaftar.
+
+show ip route — pastikan rute C (connected) muncul untuk keempat subnet VLAN.
+
+show access-lists ACL-HR-TO-FINANCE — pantau hit counter saat uji ping dari HR ke Finance.

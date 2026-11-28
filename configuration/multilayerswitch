@@ -1,0 +1,59 @@
+
+1. Multilayer Switch (3560-24PS — Core / Inter-VLAN Routing & ACL)
+Bagian VLAN, Trunk ke Router/Access, IP Routing & SVI, serta Extended ACL paling tepat diletakkan di Switch Layer 3 (3560) karena perangkat inilah yang melakukan routing antar-VLAN.
+
+Switch3560> enable
+Switch3560# configure terminal
+
+! Membuat VLAN
+Switch3560(config)# vlan 10
+Switch3560(config-vlan)# name IT-DEPT
+Switch3560(config-vlan)# vlan 20
+Switch3560(config-vlan)# name HR-DEPT
+Switch3560(config-vlan)# vlan 30
+Switch3560(config-vlan)# name FINANCE-DEPT
+Switch3560(config-vlan)# vlan 40
+Switch3560(config-vlan)# name GUEST-ZONE
+Switch3560(config-vlan)# vlan 99
+Switch3560(config-vlan)# name MANAGEMENT
+Switch3560(config-vlan)# exit
+
+! Trunk ke Router1 (Gig0/1) dan ke Switch 2960 (Gig0/2)
+Switch3560(config)# interface range gigabitEthernet 0/1 - 2
+Switch3560(config-if-range)# switchport trunk encapsulation dot1q
+Switch3560(config-if-range)# switchport mode trunk
+Switch3560(config-if-range)# switchport trunk native vlan 99
+Switch3560(config-if-range)# no shutdown
+Switch3560(config-if-range)# exit
+
+! Mengaktifkan routing antar-VLAN & SVI Gateway
+Switch3560(config)# ip routing
+
+Switch3560(config)# interface vlan 10
+Switch3560(config-if)# ip address 192.168.10.1 255.255.255.0
+Switch3560(config-if)# no shutdown
+Switch3560(config-if)# exit
+
+Switch3560(config)# interface vlan 20
+Switch3560(config-if)# ip address 192.168.20.1 255.255.255.0
+Switch3560(config-if)# no shutdown
+Switch3560(config-if)# exit
+
+Switch3560(config)# interface vlan 30
+Switch3560(config-if)# ip address 192.168.30.1 255.255.255.0
+Switch3560(config-if)# no shutdown
+Switch3560(config-if)# exit
+
+Switch3560(config)# interface vlan 40
+Switch3560(config-if)# ip address 192.168.40.1 255.255.255.0
+Switch3560(config-if)# no shutdown
+Switch3560(config-if)# exit
+
+! Extended ACL: blokir trafik dari VLAN HR (192.168.20.0/24) ke VLAN Finance (192.168.30.0/24)
+Switch3560(config)# access-list 101 deny ip 192.168.20.0 0.0.0.255 192.168.30.0 0.0.0.255
+Switch3560(config)# access-list 101 permit ip any any
+
+Switch3560(config)# interface vlan 20
+Switch3560(config-if)# ip access-group 101 in
+Switch3560(config-if)# exit
+Verifikasi: Jalankan show ip route untuk memastikan subnet VLAN 10, 20, 30, dan 40 berstatus C (connected), lalu show access-lists 101 dan show ip interface vlan 20 untuk memastikan ACL aktif di arah inbound.

@@ -1,0 +1,70 @@
+2. Access Switch (2960-24TT — Access Port, Port Security, DHCP Snooping & DAI)
+Bagian Port Security, DHCP Snooping, dan DAI paling sesuai diterapkan pada Switch Layer 2 (2960-24TT) karena end-device terhubung langsung ke switch ini. Catatan: pada topologi belum terlihat perangkat DHCP Server terpisah; jika DHCP Server berada di arah uplink (Gig0/1), tandai Gig0/1 sebagai ip dhcp snooping trust (pada draf awal tertulis Fa0/24).
+
+Switch2960> enable
+Switch2960# configure terminal
+
+! Membuat VLAN agar database VLAN selaras dengan Core Switch
+Switch2960(config)# vlan 10
+Switch2960(config-vlan)# name IT-DEPT
+Switch2960(config-vlan)# vlan 20
+Switch2960(config-vlan)# name HR-DEPT
+Switch2960(config-vlan)# vlan 30
+Switch2960(config-vlan)# name FINANCE-DEPT
+Switch2960(config-vlan)# vlan 40
+Switch2960(config-vlan)# name GUEST-ZONE
+Switch2960(config-vlan)# vlan 99
+Switch2960(config-vlan)# name MANAGEMENT
+Switch2960(config-vlan)# exit
+
+! Port Trunk uplink ke Switch 3560
+Switch2960(config)# interface gigabitEthernet 0/1
+Switch2960(config-if)# switchport mode trunk
+Switch2960(config-if)# switchport trunk native vlan 99
+Switch2960(config-if)# no shutdown
+Switch2960(config-if)# exit
+
+! Penempatan Access VLAN sesuai port end-device pada topologi
+Switch2960(config)# interface fastEthernet 0/2
+Switch2960(config-if)# switchport mode access
+Switch2960(config-if)# switchport access vlan 20
+Switch2960(config-if)# exit
+
+Switch2960(config)# interface fastEthernet 0/3
+Switch2960(config-if)# switchport mode access
+Switch2960(config-if)# switchport access vlan 30
+Switch2960(config-if)# exit
+
+Switch2960(config)# interface fastEthernet 0/4
+Switch2960(config-if)# switchport mode access
+Switch2960(config-if)# switchport access vlan 10
+Switch2960(config-if)# exit
+
+Switch2960(config)# interface fastEthernet 0/5
+Switch2960(config-if)# switchport mode access
+Switch2960(config-if)# switchport access vlan 40
+Switch2960(config-if)# exit
+
+! Port Security pada port akses yang digunakan (Fa0/2 - 5)
+Switch2960(config)# interface range fastEthernet 0/2 - 5
+Switch2960(config-if-range)# switchport port-security
+Switch2960(config-if-range)# switchport port-security maximum 2
+Switch2960(config-if-range)# switchport port-security mac-address sticky
+Switch2960(config-if-range)# switchport port-security violation shutdown
+Switch2960(config-if-range)# no shutdown
+Switch2960(config-if-range)# exit
+
+! DHCP Snooping & Dynamic ARP Inspection (DAI)
+Switch2960(config)# ip dhcp snooping
+Switch2960(config)# ip dhcp snooping vlan 10,20,30,40
+
+Switch2960(config)# interface gigabitEthernet 0/1
+Switch2960(config-if)# ip dhcp snooping trust
+Switch2960(config-if)# exit
+
+Switch2960(config)# interface range fastEthernet 0/2 - 5
+Switch2960(config-if-range)# ip dhcp snooping limit rate 15
+Switch2960(config-if-range)# exit
+
+Switch2960(config)# ip arp inspection vlan 10,20,30,40
+Verifikasi: Jalankan show port-security interface fastEthernet 0/2 untuk mengecek status Secure-up dan Shutdown, serta show ip dhcp snooping binding untuk melihat tabel binding IP–MAC
